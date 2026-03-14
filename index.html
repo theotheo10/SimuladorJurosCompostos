@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de Juros Compostos</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f7f6f2;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: rgba(0,0,0,0.08);
+    --text: #1a1916;
+    --muted: #7a7870;
+    --green: #1a7a52;
+    --green-light: #e8f5ee;
+    --blue: #1a4a8a;
+    --blue-light: #e8eef8;
+    --amber: #a05c00;
+    --amber-light: #fdf3e3;
+    --red: #b83232;
+    --red-light: #fdeaea;
+    --accent: #e05c2a;
+  }
+
+  body {
+    font-family: 'Georgia', serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1.5rem 4rem;
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    font-weight: normal;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.25rem;
+    color: var(--text);
+  }
+  .subtitle {
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-family: 'Courier New', monospace;
+    margin-bottom: 2rem;
+  }
+
+  .section-label {
+    font-family: 'Courier New', monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin-bottom: 0.75rem;
+  }
+
+  /* Controls */
+  .controls-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem 2rem;
+    margin-bottom: 2rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+  }
+  .ctrl { display: flex; flex-direction: column; gap: 5px; }
+  .ctrl-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .ctrl-header label {
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-family: 'Courier New', monospace;
+  }
+  .ctrl-header .ctrl-val {
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: var(--text);
+    font-family: 'Courier New', monospace;
+    cursor: text;
+    border-bottom: 1px dashed transparent;
+    transition: border-color 0.15s;
+    outline: none;
+    min-width: 4ch;
+    text-align: right;
+  }
+  .ctrl-header .ctrl-val:hem {
+    border-bottom-color: var(--muted);
+  }
+  .ctrl-header .ctrl-val.editing {
+    border-bottom: 1.5px solid var(--accent);
+    color: var(--accent);
+    background: transparent;
+  }
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--text);
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  input[type=range]::-webkit-slider-thumb:hem { transform: scale(1.2); }
+  .inflation-ctrl input[type=range]::-webkit-slider-thumb { background: var(--red); }
+
+  /* Stats row */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0,1fr));
+    gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .stat .lbl {
+    font-size: 0.68rem;
+    font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .stat .val {
+    font-size: 1.05rem;
+    font-weight: bold;
+    color: var(--text);
+    line-height: 1.2;
+  }
+  .stat .sub {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 2px;
+    font-family: 'Courier New', monospace;
+  }
+  .stat.green .val { color: var(--green); }
+  .stat.red .val { color: var(--red); }
+  .stat.blue .val { color: var(--blue); }
+
+  /* Chart area */
+  .chart-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem 1rem;
+    margin-bottom: 1rem;
+  }
+  .chart-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 1rem;
+  }
+  .tab {
+    font-family: 'Courier New', monospace;
+    font-size: 0.72rem;
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tab.active {
+    background: var(--text);
+    color: #fff;
+    border-color: var(--text);
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .leg {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.72rem;
+    font-family: 'Courier New', monospace;
+    color: var(--muted);
+  }
+  .leg-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+  .chart-container { position: relative; width: 100%; height: 280px; }
+
+  /* Comparison panel */
+  .comparison {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .comparison-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .comp-card {
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+  }
+  .comp-card.nominal { background: var(--blue-light); }
+  .comp-card.real { background: var(--green-light); }
+  .comp-card .cc-label {
+    font-family: 'Courier New', monospace;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+  .comp-card.nominal .cc-label { color: var(--blue); }
+  .comp-card.real .cc-label { color: var(--green); }
+  .comp-card .cc-val {
+    font-size: 1.4rem;
+    font-weight: bold;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .comp-card.nominal .cc-val { color: var(--blue); }
+  .comp-card.real .cc-val { color: var(--green); }
+  .comp-card .cc-sub {
+    font-size: 0.72rem;
+    font-family: 'Courier New', monospace;
+    opacity: 0.7;
+  }
+  .comp-card.nominal .cc-sub { color: var(--blue); }
+  .comp-card.real .cc-sub { color: var(--green); }
+
+  .inflation-note {
+    background: var(--amber-light);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.78rem;
+    color: var(--amber);
+    font-family: 'Courier New', monospace;
+    line-height: 1.5;
+  }
+
+  /* Milestone table */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    overflow-x: auto;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+  }
+  th {
+    text-align: left;
+    font-family: 'Courier New', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--border);
+    font-weight: normal;
+    white-space: nowrap;
+  }
+  td {
+    padding: 7px 8px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'Courier New', monospace;
+    white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: none; }
+  .g { color: var(--green); }
+  .r { color: var(--red); }
+  .b { color: var(--blue); }
+  td strong { color: var(--text); }
+
+  @media (max-width: 600px) {
+    .controls-grid { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .comparison-grid { grid-template-columns: 1fr; }
+    h1 { font-size: 1.3rem; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Simulador de Juros Compostos</h1>
+<p class="subtitle">capitalização mensal · corrigido pela inflação · R$</p>
+
+<h2 style="font-size:1.3rem; font-weight:normal; letter-spacing:-0.02em; margin-bottom:0.2rem;">Fase de Acumulação</h2>
+<p class="subtitle">construção de patrimônio ao longo do tempo</p>
+
+<div class="section-label">Parâmetros</div>
+<div class="controls-grid">
+  <div class="ctrl">
+    <div class="ctrl-header">
+      <label>Aporte inicial</label>
+      <span class="ctrl-val" id="lP" contenteditable="true" spellcheck="false" title="Clique para editar">R$ 300.000</span>
+    </div>
+    <input type="range" id="sP" min="10000" max="1000000" step="10000" value="300000">
+  </div>
+  <div class="ctrl">
+    <div class="ctrl-header">
+      <label>Aporte mensal</label>
+      <span class="ctrl-val" id="lM" contenteditable="true" spellcheck="false" title="Clique para editar">R$ 10.000</span>
+    </div>
+    <input type="range" id="sM" min="0" max="50000" step="500" value="10000">
+  </div>
+  <div class="ctrl">
+    <div class="ctrl-header">
+      <label>Taxa de juros anual</label>
+      <span class="ctrl-val" id="lR" contenteditable="true" spellcheck="false" title="Clique para editar">20%</span>
+    </div>
+    <input type="range" id="sR" min="1" max="30" step="0.5" value="20">
+  </div>
+  <div class="ctrl">
+    <div class="ctrl-header">
+      <label>Crescimento anual dos aportes</label>
+      <span class="ctrl-val" id="lG" contenteditable="true" spellcheck="false" title="Clique para editar">5%</span>
+    </div>
+    <input type="range" id="sG" min="0" max="20" step="0.5" value="5">
+  </div>
+  <div class="ctrl">
+    <div class="ctrl-header">
+      <label>Prazo</label>
+      <span class="ctrl-val" id="lY" contenteditable="true" spellcheck="false" title="Clique para editar">40 anos</span>
+    </div>
+    <input type="range" id="sY" min="0" max="50" step="1" value="40">
+  </div>
+  <div class="ctrl inflation-ctrl">
+    <div class="ctrl-header">
+      <label>Taxa de inflação anual</label>
+      <span class="ctrl-val" id="lI" contenteditable="true" spellcheck="false" title="Clique para editar" style="color:var(--red)">4%</span>
+    </div>
+    <input type="range" id="sI" min="0" max="20" step="0.5" value="4">
+  </div>
+</div>
+
+<div class="stats" id="statsRow"></div>
+
+<!-- Nominal vs Real Comparison -->
+<div class="section-label">Nominal vs. real (corrigido pela inflação)</div>
+<div class="comparison">
+  <div class="comparison-grid">
+    <div class="comp-card nominal">
+      <div class="cc-label">Saldo nominal</div>
+      <div class="cc-val" id="nominalVal">—</div>
+      <div class="cc-sub" id="nominalSub">—</div>
+    </div>
+    <div class="comp-card real">
+      <div class="cc-label">Saldo real (R$ de hoje)</div>
+      <div class="cc-val" id="realVal">—</div>
+      <div class="cc-sub" id="realSub">—</div>
+    </div>
+  </div>
+  <div class="inflation-note" id="inflationNote">—</div>
+</div>
+
+<!-- Chart -->
+<div class="section-label">Evolução do patrimônio</div>
+<div class="chart-wrap">
+  <div class="chart-tabs">
+    <button class="tab active" onclick="setTab('stacked', this)">Composição</button>
+    <button class="tab" onclick="setTab('nominal_vs_real', this)">Nominal vs. real</button>
+    <button class="tab" onclick="setTab('annual_gain', this)">Ganho anual</button>
+  </div>
+  <div class="legend" id="legendEl"></div>
+  <div class="chart-container">
+    <canvas id="chart"></canvas>
+  </div>
+</div>
+
+<!-- Milestone table -->
+<div class="section-label">Anos de referência</div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Ano</th>
+        <th>Saldo nominal</th>
+        <th>Saldo real</th>
+        <th>Perda de poder de compra</th>
+        <th>Ganho anual (nominal)</th>
+        <th>Aporte mensal</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+let chart, currentTab = 'stacked';
+
+// ── Editable value labels ──────────────────────────────────────────────────
+// Each entry: { labelId, sliderId, type: 'currency'|'pct'|'years', min, max }
+const editableCfg = [
+  { labelId: 'lP', sliderId: 'sP', type: 'currency', min: 0,   max: 1e12 },
+  { labelId: 'lM', sliderId: 'sM', type: 'currency', min: 0,   max: 1e9  },
+  { labelId: 'lR', sliderId: 'sR', type: 'pct',      min: 0.1, max: 1000 },
+  { labelId: 'lG', sliderId: 'sG', type: 'pct',      min: 0,   max: 1000 },
+  { labelId: 'lY', sliderId: 'sY', type: 'years',    min: 0,   max: 200  },
+  { labelId: 'lI', sliderId: 'sI', type: 'pct',      min: 0,   max: 100  },
+];
+
+function parseRaw(text, type) {
+  // Strip everything except digits, dot, comma → then normalise
+  const clean = text.replace(/[^\d.,]/g, '').replace(',', '.');
+  const val = parseFloat(clean);
+  return isNaN(val) ? null : val;
+}
+
+function fmtLabel(val, type) {
+  if (type === 'currency') return fmtBR(val);
+  if (type === 'pct')      return val + '%';
+  if (type === 'years')    return val + ' anos';
+}
+
+function commitEdit(cfg, el) {
+  el.classList.remove('editing');
+  const raw = parseRaw(el.textContent, cfg.type);
+  if (raw === null || raw < cfg.min) { update(); return; } // revert
+  const val = Math.max(cfg.min, raw);
+  const slider = document.getElementById(cfg.sliderId);
+  // Store override FIRST, then update slider position (visually clamp, no effect on simulation)
+  slider.dataset.override = val;
+  slider._settingFromCode = true;
+  slider.value = Math.min(Math.max(val, +slider.min), +slider.max);
+  slider._settingFromCode = false;
+  update();
+}
+
+editableCfg.forEach(cfg => {
+  const el = document.getElementById(cfg.labelId);
+
+  el.addEventListener('focus', () => {
+    el.classList.add('editing');
+    const slider = document.getElementById(cfg.sliderId);
+    const val = +(slider.dataset.override || slider.value);
+    el.textContent = cfg.type === 'currency' ? Math.round(val) : val;
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+  });
+
+  el.addEventListener('blur', () => commitEdit(cfg, el));
+
+  el.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+    if (e.key === 'Escape') {
+      el.classList.remove('editing');
+      update();
+      el.blur();
+    }
+    const allowed = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Enter','Escape','.',','];
+    if (!allowed.includes(e.key) && !/^\d$/.test(e.key)) e.preventDefault();
+  });
+});
+
+function fmtBR(v) {
+  return 'R$\u00a0' + Math.round(v).toLocaleString('pt-BR');
+}
+function fmtShort(v) {
+  const a = Math.abs(v);
+  if (a >= 1e9) return 'R$\u00a0' + (v/1e9).toFixed(2).replace('.',',') + 'B';
+  if (a >= 1e6) return 'R$\u00a0' + (v/1e6).toFixed(1).replace('.',',') + 'M';
+  if (a >= 1e3) return 'R$\u00a0' + (v/1e3).toFixed(1).replace('.',',') + 'k';
+  return fmtBR(v);
+}
+function fmtPct(v) { return (v * 100).toFixed(1) + '%'; }
+
+function simulate(P, initM, rAnnual, Y, growth, inflation) {
+  const rm = rAnnual / 100 / 12;
+  let balance = P, totalIn = P;
+  const rows = [{ year: 0, balance: P, totalIn: P, yearGain: 0, monthlyContrib: 0, realBalance: P }];
+  for (let y = 1; y <= Y; y++) {
+    const mc = initM * Math.pow(1 + growth / 100, y - 1);
+    const prev = balance;
+    for (let m = 0; m < 12; m++) { balance = balance * (1 + rm) + mc; }
+    totalIn += mc * 12;
+    const deflator = Math.pow(1 + inflation / 100, y);
+    const realBalance = balance / deflator;
+    rows.push({ year: y, balance, totalIn, yearGain: balance - prev, monthlyContrib: mc, realBalance });
+  }
+  return rows;
+}
+
+function milestoneYears(Y) {
+  const base = [1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+  const ms = base.filter(y => y <= Y);
+  if (Y % 5 !== 0 && Y > 1 && !ms.includes(Y)) ms.push(Y);
+  return ms;
+}
+
+function setTab(tab, el) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  updateChart(window._lastRows, window._lastP, window._lastY);
+}
+
+function updateChart(rows, P, Y) {
+  window._lastRows = rows;
+  window._lastP = P;
+  window._lastY = Y;
+
+  const step = Math.max(1, Math.floor(Y / 40));
+  const sampled = rows.filter((r, i) => i % step === 0 || i === Y);
+  const labels = sampled.map(r => r.year === 0 ? 'Hoje' : 'Ano ' + r.year);
+
+  let datasets, legendItems;
+
+  if (currentTab === 'stacked') {
+    datasets = [
+      { label: 'Aporte inicial', data: sampled.map(() => Math.round(P)), backgroundColor: '#c8d8f0', stack: 's' },
+      { label: 'Aportes mensais', data: sampled.map(r => Math.round(Math.max(0, r.totalIn - P))), backgroundColor: '#5DCAA5', stack: 's' },
+      { label: 'Juros acumulados', data: sampled.map(r => Math.round(Math.max(0, r.balance - r.totalIn))), backgroundColor: '#1a7a52', stack: 's' }
+    ];
+    legendItems = [
+      { color: '#c8d8f0', label: 'Aporte inicial' },
+      { color: '#5DCAA5', label: 'Aportes mensais' },
+      { color: '#1a7a52', label: 'Juros acumulados' }
+    ];
+  } else if (currentTab === 'nominal_vs_real') {
+    datasets = [
+      { label: 'Saldo nominal', data: sampled.map(r => Math.round(r.balance)), borderColor: '#1a4a8a', backgroundColor: 'rgba(26,74,138,0.08)', fill: true, tension: 0.3, type: 'line', pointRadius: 0 },
+      { label: 'Saldo real (R$ de hoje)', data: sampled.map(r => Math.round(r.realBalance)), borderColor: '#1a7a52', backgroundColor: 'rgba(26,122,82,0.08)', fill: true, tension: 0.3, type: 'line', pointRadius: 0 }
+    ];
+    legendItems = [
+      { color: '#1a4a8a', label: 'Saldo nominal' },
+      { color: '#1a7a52', label: 'Saldo real (R$ de hoje)' }
+    ];
+  } else {
+    datasets = [
+      { label: 'Ganho anual', data: sampled.map(r => Math.round(r.yearGain)), backgroundColor: sampled.map(r => r.yearGain > 0 ? '#1a7a52' : '#b83232'), type: 'bar' }
+    ];
+    legendItems = [{ color: '#1a7a52', label: 'Ganho anual (nominal)' }];
+  }
+
+  document.getElementById('legendEl').innerHTML = legendItems.map(l =>
+    `<div class="leg"><div class="leg-dot" style="background:${l.color}"></div>${l.label}</div>`
+  ).join('');
+
+  const isBar = currentTab === 'stacked' || currentTab === 'annual_gain';
+
+  if (chart) {
+    chart.data.labels = labels;
+    chart.data.datasets = datasets;
+    chart.options.scales.y.stacked = currentTab === 'stacked';
+    chart.options.scales.x.stacked = currentTab === 'stacked';
+    chart.update('none');
+  } else {
+    chart = new Chart(document.getElementById('chart'), {
+      type: isBar ? 'bar' : 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ' ' + fmtBR(ctx.raw) } }
+        },
+        scales: {
+          x: {
+            stacked: currentTab === 'stacked',
+            ticks: { autoSkip: true, maxTicksLimit: 10, color: '#7a7870', font: { family: 'Courier New', size: 10 } },
+            grid: { display: false }
+          },
+          y: {
+            stacked: currentTab === 'stacked',
+            ticks: { color: '#7a7870', callback: v => fmtShort(v), font: { family: 'Courier New', size: 10 } },
+            grid: { color: 'rgba(0,0,0,0.05)' }
+          }
+        }
+      }
+    });
+  }
+}
+
+function getVal(sliderId) {
+  const slider = document.getElementById(sliderId);
+  const ov = slider.dataset.override;
+  return (ov !== undefined && ov !== '') ? +ov : +slider.value;
+}
+
+function update() {
+  const P = getVal('sP');
+  const M = getVal('sM');
+  const R = getVal('sR');
+  const G = getVal('sG');
+  const Y = Math.round(getVal('sY'));
+  const I = getVal('sI');
+
+  // Only update labels if not currently being edited
+  editableCfg.forEach(cfg => {
+    const el = document.getElementById(cfg.labelId);
+    if (!el.classList.contains('editing')) {
+      const vals = { lP: P, lM: M, lR: R, lG: G, lY: Y, lI: I };
+      const v = vals[cfg.labelId];
+      el.textContent = fmtLabel(v, cfg.type);
+      // Restore inflation red colour
+      if (cfg.labelId === 'lI') el.style.color = 'var(--red)';
+    }
+  });
+
+  const rows = simulate(P, M, R, Y, G, I);
+  const final = rows[Y];
+  const interestEarned = final.balance - final.totalIn;
+  const realRate = ((1 + R/100) / (1 + I/100) - 1) * 100;
+  const purchasingLost = final.balance - final.realBalance;
+  const purchasingLostPct = (purchasingLost / final.balance * 100).toFixed(1);
+
+  // Stats
+  document.getElementById('statsRow').innerHTML = [
+    { lbl: 'Saldo final', val: fmtShort(final.balance), sub: fmtBR(final.balance), cls: '' },
+    { lbl: 'Saldo real', val: fmtShort(final.realBalance), sub: "em poder de compra de hoje", cls: 'green' },
+    { lbl: 'Taxa de juros real', val: realRate.toFixed(1) + '%', sub: 'após ' + I + '% de inflação', cls: realRate > 0 ? 'green' : 'red' },
+    { lbl: 'Ganho no último ano', val: fmtShort(final.yearGain), sub: 'ano ' + (Y-1) + '→' + Y, cls: 'green' }
+  ].map(s => `<div class="stat ${s.cls}"><div class="lbl">${s.lbl}</div><div class="val">${s.val}</div><div class="sub">${s.sub}</div></div>`).join('');
+
+  // Comparison panel
+  document.getElementById('nominalVal').textContent = fmtShort(final.balance);
+  document.getElementById('nominalSub').textContent = fmtBR(final.balance) + ' — dinheiro do ano ' + Y;
+  document.getElementById('realVal').textContent = fmtShort(final.realBalance);
+  document.getElementById('realSub').textContent = fmtBR(final.realBalance) + ' em R$ de hoje';
+
+  const inflationMultiplier = Math.pow(1 + I/100, Y).toFixed(1);
+  document.getElementById('inflationNote').textContent =
+    `Com inflação de ${I}% ao ano, os preços serão ${inflationMultiplier}× mais altos em ${Y} anos — ou seja, seu saldo nominal de R$${Math.round(final.balance).toLocaleString('pt-BR')} terá o mesmo poder de compra de R$${Math.round(final.realBalance).toLocaleString('pt-BR')} hoje. Isso representa ${purchasingLostPct}% do saldo nominal corroído pela inflação. Taxa de juros real: ${realRate.toFixed(2)}% ao ano (equação de Fisher).`;
+
+  // Sync drawdown starting balance (unless user has overridden it)
+  window._lastAccumFinal = final.balance;
+  window._lastAccumYears = Y;
+  if (typeof updateDrawdown === 'function') {
+    updateDrawdown(final.balance, Y);
+  }
+
+  // Chart
+  updateChart(rows, P, Y);
+
+  // Milestone table
+  const ms = milestoneYears(Y);
+  document.getElementById('tbody').innerHTML = ms.map(y => {
+    const d = rows[y];
+    const lost = d.balance - d.realBalance;
+    const lostPct = d.balance > 0 ? (lost / d.balance * 100).toFixed(0) : 0;
+    return `<tr>
+      <td>${y}</td>
+      <td><strong>${fmtShort(d.balance)}</strong></td>
+      <td class="g">${fmtShort(d.realBalance)}</td>
+      <td class="r">−${fmtShort(lost)} <span style="opacity:0.6">(${lostPct}%)</span></td>
+      <td class="g">${fmtShort(d.yearGain)}</td>
+      <td>${fmtBR(d.monthlyContrib)}/mês</td>
+    </tr>`;
+  }).join('');
+}
+
+['sP','sM','sR','sG','sY','sI'].forEach(id => {
+  document.getElementById(id).addEventListener('input', function() {
+    if (this._settingFromCode) return; // ignore programmatic updates
+    this.dataset.override = ''; // user dragged — clear override
+    update();
+  });
+});
+update();
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════ DRAWDOWN -->
+<div style="border-top: 2px solid var(--border); margin: 3rem 0 2rem;"></div>
+
+<h2 style="font-size:1.3rem; font-weight:normal; letter-spacing:-0.02em; margin-bottom:0.2rem;">Fase de Retirada</h2>
+<p class="subtitle">quanto custa sua aposentadoria?</p>
+
+<div class="section-label">Parâmetros</div>
+<div class="controls-grid">
+  <div class="ctrl">
+    <div class="ctrl-header">
+      <label>Patrimônio inicial</label>
+      <span class="ctrl-val" id="dlS" contenteditable="true" spellcheck="false" title="Clique para editar">—</span>
+    </div>
+    <input type="range" id="dsS" min="100000" max="10000000" step="100000" value="1000000">
+    <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
+      <span style="font-size:0.68rem; font-family:'Courier New',monospace; color:var(--muted);" id="dsSyncNote">sincronizado automaticamente · edite para substituir</span>
+      <button id="ddResyncBtn" onclick="ddResync()" style="display:none; font-family:'Courier New',monospace; font-size:0.68rem; padding:2px 8px; border-radius:20px; border:1px solid var(--accent); background:transparent; color:var(--accent); cursor:pointer; white-space:nowrap;">↺ ressincronizar</button>
+    </div>
+  </div>
+  <div class="ctrl">
+    <div class="ctrl-header">
+      <label>Custo de vida mensal <span style="font-size:0.65rem; color:var(--muted)">(R$ de hoje)</span></label>
+      <span class="ctrl-val" id="dlC" contenteditable="true" spellcheck="false" title="Clique para editar" style="color:var(--red)">R$&nbsp;20.000</span>
+    </div>
+    <input type="range" id="dsC" min="1000" max="100000" step="1000" value="20000">
+    <span style="font-size:0.68rem; font-family:'Courier New',monospace; color:var(--muted); margin-top:2px;">corrigido pela inflação na acumulação e na retirada</span>
+  </div>
+  <div class="ctrl">
+    <div class="ctrl-header">
+      <label>Taxa de juros anual</label>
+      <span class="ctrl-val" id="dlR">10%</span>
+    </div>
+    <input type="range" id="dsR" min="0" max="30" step="0.5" value="10">
+  </div>
+  <div class="ctrl inflation-ctrl">
+    <div class="ctrl-header">
+      <label>Taxa de inflação anual</label>
+      <span class="ctrl-val" id="dlI" style="color:var(--red)">4%</span>
+    </div>
+    <input type="range" id="dsI" min="0" max="20" step="0.5" value="4">
+  </div>
+  <div class="ctrl">
+    <div class="ctrl-header">
+      <label>Prazo de retirada</label>
+      <span class="ctrl-val" id="dlY">30 anos</span>
+    </div>
+    <input type="range" id="dsY" min="5" max="60" step="1" value="30">
+  </div>
+</div>
+
+<!-- Verdict banner -->
+<div id="ddVerdict" style="border-radius:10px; padding:14px 18px; margin-bottom:1.5rem; font-family:'Courier New',monospace; font-size:0.82rem; line-height:1.6;"></div>
+
+<div class="stats" id="ddStatsRow"></div>
+
+<div class="section-label">Nominal vs. real na fase de retirada</div>
+<div class="comparison" style="margin-bottom:1rem;">
+  <div class="comparison-grid">
+    <div class="comp-card nominal">
+      <div class="cc-label">Saldo ao fim das retiradas</div>
+      <div class="cc-val" id="ddNominalVal">—</div>
+      <div class="cc-sub" id="ddNominalSub">—</div>
+    </div>
+    <div class="comp-card real">
+      <div class="cc-label">Saldo real (R$ de hoje)</div>
+      <div class="cc-val" id="ddRealVal">—</div>
+      <div class="cc-sub" id="ddRealSub">—</div>
+    </div>
+  </div>
+  <div class="inflation-note" id="ddInflationNote">—</div>
+</div>
+
+<div class="section-label">Evolução do saldo</div>
+<div class="chart-wrap" style="margin-bottom:1rem;">
+  <div class="chart-tabs" id="ddTabRow">
+    <button class="tab active" onclick="setDdTab('balance', this)">Saldo</button>
+    <button class="tab" onclick="setDdTab('nominal_vs_real', this)">Nominal vs. real</button>
+    <button class="tab" onclick="setDdTab('withdrawals', this)">Retiradas vs. juros</button>
+  </div>
+  <div class="legend" id="ddLegendEl"></div>
+  <div class="chart-container">
+    <canvas id="ddChart"></canvas>
+  </div>
+</div>
+
+<div class="section-label">Anos de referência</div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Ano</th>
+        <th>Saldo nominal</th>
+        <th>Saldo real</th>
+        <th>Retirada anual</th>
+        <th>Equiv. mensal (R$ de hoje)</th>
+        <th>Taxa de retirada</th>
+      </tr>
+    </thead>
+    <tbody id="ddTbody"></tbody>
+  </table>
+</div>
+
+<script>
+let ddChart, ddTab = 'balance';
+let ddStartOverride = null;
+let ddCostOverride = null;
+
+// ── Simulation ─────────────────────────────────────────────────────────────
+// monthlyCostToday: user's cost of living em R$ de hoje
+// accumYears: number of accumulation anos (to inflate cost forward to retirement date)
+// rAnnual: portfolio return during drawdown
+// inflation: annual inflation rate during drawdown (same rate used for both phases)
+// Y: drawdown horizon in anos
+function simulateDrawdown(S, monthlyCostToday, accumYears, rAnnual, inflation, Y) {
+  const rm = rAnnual / 100 / 12;
+  const infl = inflation / 100;
+
+  // Cost of living at retirement start = today's cost inflated through accumulation period
+  const costAtRetirement = monthlyCostToday * 12 * Math.pow(1 + infl, accumYears);
+
+  let balance = S;
+  const rows = [{ year: 0, balance: S, realBalance: S, withdrawal: 0, annualCostToday: monthlyCostToday * 12, interest: 0 }];
+  let depletedAt = null;
+
+  for (let y = 1; y <= Y; y++) {
+    // Grow balance for the year (monthly compounding)
+    const prev = balance;
+    for (let m = 0; m < 12; m++) balance = balance * (1 + rm);
+    const interest = balance - prev;
+
+    // Withdrawal = cost at retirement, grown by inflation for each drawdown year
+    const nominalWithdrawal = costAtRetirement * Math.pow(1 + infl, y - 1);
+    balance -= nominalWithdrawal;
+
+    if (balance <= 0 && depletedAt === null) {
+      depletedAt = y;
+      balance = 0;
+    }
+
+    // Real values: deflate back to today's purchasing power
+    // Total inflation elapsed = accumYears (to get to retirement) + y (into drawdown)
+    const totalYears = accumYears + y;
+    const deflator = Math.pow(1 + infl, totalYears);
+    const realBalance = Math.max(0, balance) / deflator;
+    // Real withdrawal em R$ de hoje is always just monthlyCostToday * 12 (by construction)
+    const realWithdrawal = nominalWithdrawal / deflator;
+
+    rows.push({
+      year: y,
+      balance: Math.max(0, balance),
+      realBalance,
+      withdrawal: balance <= 0 && depletedAt !== y ? 0 : nominalWithdrawal,
+      realWithdrawal: balance <= 0 && depletedAt !== y ? 0 : realWithdrawal,
+      annualCostToday: monthlyCostToday * 12,
+      interest: balance <= 0 && depletedAt !== y ? 0 : interest
+    });
+
+    if (balance <= 0) {
+      for (let ry = y + 1; ry <= Y; ry++) {
+        rows.push({ year: ry, balance: 0, realBalance: 0, withdrawal: 0, realWithdrawal: 0, annualCostToday: monthlyCostToday * 12, interest: 0 });
+      }
+      break;
+    }
+  }
+  return { rows, depletedAt, costAtRetirement };
+}
+
+function setDdTab(tab, el) {
+  ddTab = tab;
+  document.getElementById('ddTabRow').querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderDdChart(window._ddLastRows);
+}
+
+function renderDdChart(rows) {
+  window._ddLastRows = rows;
+  const step = Math.max(1, Math.floor(rows.length / 40));
+  const sampled = rows.filter((r, i) => i % step === 0 || i === rows.length - 1);
+  const labels = sampled.map(r => r.year === 0 ? 'Hoje' : 'Ano ' + r.year);
+  let datasets, legendItems;
+
+  if (ddTab === 'balance') {
+    datasets = [{ label: 'Saldo', data: sampled.map(r => Math.round(r.balance)),
+      backgroundColor: sampled.map(r => r.balance <= 0 ? '#f09595' : '#c8d8f0'), type: 'bar' }];
+    legendItems = [{ color: '#c8d8f0', label: 'Saldo nominal' }, { color: '#f09595', label: 'Esgotado' }];
+  } else if (ddTab === 'nominal_vs_real') {
+    datasets = [
+      { label: 'Saldo nominal', data: sampled.map(r => Math.round(r.balance)), borderColor: '#1a4a8a', backgroundColor: 'rgba(26,74,138,0.08)', fill: true, tension: 0.3, type: 'line', pointRadius: 0 },
+      { label: 'Saldo real', data: sampled.map(r => Math.round(r.realBalance)), borderColor: '#1a7a52', backgroundColor: 'rgba(26,122,82,0.08)', fill: true, tension: 0.3, type: 'line', pointRadius: 0 }
+    ];
+    legendItems = [{ color: '#1a4a8a', label: 'Saldo nominal' }, { color: '#1a7a52', label: 'Saldo real' }];
+  } else {
+    datasets = [
+      { label: 'Retirada', data: sampled.map(r => Math.round(r.withdrawal)), backgroundColor: '#f09595', type: 'bar' },
+      { label: 'Juros acumulados', data: sampled.map(r => Math.round(r.interest)), backgroundColor: '#5DCAA5', type: 'bar' }
+    ];
+    legendItems = [{ color: '#f09595', label: 'Retirada anual' }, { color: '#5DCAA5', label: 'Juros acumulados' }];
+  }
+
+  document.getElementById('ddLegendEl').innerHTML = legendItems.map(l =>
+    `<div class="leg"><div class="leg-dot" style="background:${l.color}"></div>${l.label}</div>`).join('');
+
+  if (ddChart) {
+    ddChart.data.labels = labels;
+    ddChart.data.datasets = datasets;
+    ddChart.update('none');
+  } else {
+    ddChart = new Chart(document.getElementById('ddChart'), {
+      type: 'bar', data: { labels, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + fmtBR(ctx.raw) } } },
+        scales: {
+          x: { ticks: { autoSkip: true, maxTicksLimit: 10, color: '#7a7870', font: { family: 'Courier New', size: 10 } }, grid: { display: false } },
+          y: { ticks: { color: '#7a7870', callback: v => fmtShort(v), font: { family: 'Courier New', size: 10 } }, grid: { color: 'rgba(0,0,0,0.05)' } }
+        }
+      }
+    });
+  }
+}
+
+function getDdVal(id) {
+  const el = document.getElementById(id);
+  const ov = el.dataset.override;
+  return (ov !== undefined && ov !== '') ? +ov : +el.value;
+}
+
+function updateDrawdown(startingBalance, accumYears) {
+  const S = ddStartOverride !== null ? ddStartOverride : startingBalance;
+  const C = ddCostOverride !== null ? ddCostOverride : getDdVal('dsC');
+  const R = getDdVal('dsR');
+  const I = getDdVal('dsI');
+  const Y = Math.round(getDdVal('dsY'));
+  // If balance is manually overridden, cost of living needs no accum-phase correction
+  const AY = ddStartOverride !== null ? 0 : Math.round(accumYears || 0);
+
+  // Sync slider visuals
+  const sSlider = document.getElementById('dsS');
+  sSlider._settingFromCode = true;
+  sSlider.value = Math.min(Math.max(S, +sSlider.min), +sSlider.max);
+  sSlider._settingFromCode = false;
+  const cSlider = document.getElementById('dsC');
+  cSlider._settingFromCode = true;
+  cSlider.value = Math.min(Math.max(C, +cSlider.min), +cSlider.max);
+  cSlider._settingFromCode = false;
+
+  // Show/hide resync button
+  const resyncBtn = document.getElementById('ddResyncBtn');
+  const syncNote = document.getElementById('dsSyncNote');
+  if (ddStartOverride !== null) {
+    resyncBtn.style.display = 'inline-block';
+    syncNote.style.color = 'var(--accent)';
+    syncNote.textContent = 'substituindo resultado da acumulação ·';
+  } else {
+    resyncBtn.style.display = 'none';
+    syncNote.style.color = 'var(--muted)';
+    syncNote.textContent = 'sincronizado automaticamente · edite para substituir';
+  }
+
+  // Update labels
+  const lS = document.getElementById('dlS');
+  if (!lS.classList.contains('editing')) lS.textContent = fmtBR(S);
+  const lC = document.getElementById('dlC');
+  if (!lC.classList.contains('editing')) lC.textContent = fmtBR(C);
+  document.getElementById('dlR').textContent = R + '%';
+  document.getElementById('dlI').textContent = I + '%';
+  document.getElementById('dlY').textContent = Y + ' anos';
+
+  const { rows, depletedAt, costAtRetirement } = simulateDrawdown(S, C, AY, R, I, Y);
+  const final = rows[rows.length - 1];
+  const totalWithdrawn = rows.reduce((s, r) => s + r.withdrawal, 0);
+  const realRate = ((1 + R/100) / (1 + I/100) - 1) * 100;
+  const impliedRate = S > 0 ? (costAtRetirement / S * 100) : 0;
+  const survived = depletedAt === null;
+
+  // Verdict banner
+  const verdictEl = document.getElementById('ddVerdict');
+  if (survived) {
+    verdictEl.style.background = 'var(--green-light)';
+    verdictEl.style.border = '1px solid var(--green)';
+    verdictEl.style.color = 'var(--green)';
+    verdictEl.innerHTML =
+      `&#10003; Seu patrimônio dura todo o prazo de ${Y} anos. ` +
+      `Um custo de vida de ${fmtBR(C)}/mês hoje se torna ${fmtBR(costAtRetirement/12)}/mês na aposentadoria ` +
+      `(após ${AY} anos com inflação de ${I}%). ` +
+      `Isso implica uma <strong>taxa de retirada de ${impliedRate.toFixed(2)}%</strong> no 1º ano da aposentadoria. ` +
+      `Saldo final: ${fmtShort(final.balance)}.`;
+  } else {
+    verdictEl.style.background = 'var(--red-light)';
+    verdictEl.style.border = '1px solid var(--red)';
+    verdictEl.style.color = 'var(--red)';
+    verdictEl.innerHTML =
+      `&#9888; Patrimônio esgotado no ano ${depletedAt}. ` +
+      `Um custo de vida de ${fmtBR(C)}/mês hoje chega a ${fmtBR(costAtRetirement/12)}/mês na aposentadoria, ` +
+      `exigindo uma <strong>taxa de retirada de ${impliedRate.toFixed(2)}%</strong> — ` +
+      `alta demais para uma rentabilidade de ${R}%. ` +
+      `Tente reduzir o custo de vida, aumentar a rentabilidade ou estender o prazo de acumulação.`;
+  }
+
+  // Stats
+  document.getElementById('ddStatsRow').innerHTML = [
+    { lbl: 'Saldo final', val: fmtShort(final.balance), sub: fmtBR(final.balance), cls: survived ? '' : 'red' },
+    { lbl: 'Total retirado', val: fmtShort(totalWithdrawn), sub: 'em ' + Y + ' anos', cls: 'green' },
+    { lbl: 'Taxa de retirada implícita', val: impliedRate.toFixed(2) + '%', sub: 'ano 1 da aposentadoria', cls: impliedRate < 4 ? 'green' : impliedRate < 6 ? '' : 'red' },
+    { lbl: survived ? 'Patrimônio dura o prazo' : 'Esgotado no ano', val: survived ? '&#10003; Sim' : 'Ano ' + depletedAt, sub: survived ? 'patrimônio dura mais que o prazo' : 'patrimônio chega a zero', cls: survived ? 'green' : 'red' }
+  ].map(s => `<div class="stat ${s.cls}"><div class="lbl">${s.lbl}</div><div class="val">${s.val}</div><div class="sub">${s.sub}</div></div>`).join('');
+
+  // Comparison panel
+  document.getElementById('ddNominalVal').textContent = fmtShort(final.balance);
+  document.getElementById('ddNominalSub').textContent = fmtBR(final.balance) + ' — dinheiro do ano ' + Y;
+  document.getElementById('ddRealVal').textContent = fmtShort(final.realBalance);
+  document.getElementById('ddRealSub').textContent = fmtBR(final.realBalance) + ' em R$ de hoje';
+
+  const lastYrWithdrawal = rows[rows.length - 1].withdrawal || rows.filter(r => r.withdrawal > 0).slice(-1)[0]?.withdrawal || 0;
+  document.getElementById('ddInflationNote').textContent =
+    `Custo de vida hoje: ${fmtBR(C)}/mês. ` +
+    `Na aposentadoria (${AY} anos, inflação ${I}%): ${fmtBR(costAtRetirement/12)}/mês. ` +
+    `No ano ${Y} das retiradas: ${fmtBR(lastYrWithdrawal/12)}/mês (nominal). ` +
+    `Rentabilidade real nas retiradas: ${realRate.toFixed(2)}% a.a.`;
+
+  // Milestone table
+  const ms = milestoneYears(Y).filter(y => y < rows.length);
+  document.getElementById('ddTbody').innerHTML = ms.map(y => {
+    const d = rows[y];
+    const depleted = d.balance <= 0 && y > 0;
+    const wRate = d.balance > 0 && y > 0 ? (d.withdrawal / rows[y-1].balance * 100).toFixed(1) + '%' : (y === 0 ? '—' : '—');
+    return `<tr${depleted ? ' style="opacity:0.45"' : ''}>
+      <td>${y}</td>
+      <td${depleted ? ' class="r"' : ''}><strong>${depleted ? '&#8212;' : fmtShort(d.balance)}</strong></td>
+      <td class="g">${depleted ? '&#8212;' : fmtShort(d.realBalance)}</td>
+      <td class="r">${y === 0 ? '&#8212;' : fmtShort(d.withdrawal)}</td>
+      <td style="color:var(--muted)">${y === 0 ? '&#8212;' : fmtBR(C/12 * (12/12))}</td>
+      <td style="color:var(--muted)">${wRate}</td>
+    </tr>`;
+  }).join('');
+
+  renderDdChart(rows);
+}
+
+// ── Resync ────────────────────────────────────────────────────────────────────
+function ddResync() {
+  ddStartOverride = null;
+  const sSlider = document.getElementById('dsS');
+  sSlider.dataset.override = '';
+  updateDrawdown(window._lastAccumFinal || 1000000, window._lastAccumYears || 0);
+}
+
+// ── Editable labels ────────────────────────────────────────────────────────
+function makeEditable(elId, onCommit) {
+  const el = document.getElementById(elId);
+  el.addEventListener('focus', () => {
+    el.classList.add('editing');
+    const raw = el.textContent.replace(/[^\d.,]/g, '').replace(',', '.');
+    el.textContent = Math.round(parseFloat(raw) || 0);
+    const r = document.createRange(); r.selectNodeContents(el);
+    window.getSelection().removeAllRanges(); window.getSelection().addRange(r);
+  });
+  el.addEventListener('blur', () => {
+    el.classList.remove('editing');
+    const raw = parseFloat(el.textContent.replace(/[^\d.]/g, ''));
+    if (!isNaN(raw) && raw > 0) onCommit(raw);
+    updateDrawdown(window._lastAccumFinal || 1000000, window._lastAccumYears || 0);
+  });
+  el.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+    if (e.key === 'Escape') { el.classList.remove('editing'); el.blur(); }
+    const allowed = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Enter','Escape','.',','];
+    if (!allowed.includes(e.key) && !/^\d$/.test(e.key)) e.preventDefault();
+  });
+}
+
+makeEditable('dlS', v => { ddStartOverride = v; });
+makeEditable('dlC', v => { ddCostOverride = v; });
+
+// ── Slider listeners ───────────────────────────────────────────────────────
+['dsR','dsI','dsY'].forEach(id => {
+  document.getElementById(id).addEventListener('input', function() {
+    if (this._settingFromCode) return;
+    this.dataset.override = '';
+    updateDrawdown(window._lastAccumFinal || 1000000, window._lastAccumYears || 0);
+  });
+});
+document.getElementById('dsS').addEventListener('input', function() {
+  if (this._settingFromCode) return;
+  ddStartOverride = +this.value;
+  updateDrawdown(window._lastAccumFinal || 1000000, window._lastAccumYears || 0);
+});
+document.getElementById('dsC').addEventListener('input', function() {
+  if (this._settingFromCode) return;
+  ddCostOverride = +this.value;
+  updateDrawdown(window._lastAccumFinal || 1000000, window._lastAccumYears || 0);
+});
+
+// Init: sincroniza com o resultado da acumulação
+updateDrawdown(window._lastAccumFinal || 1000000, window._lastAccumYears || 0);
+</script>
+</body>
+</html>

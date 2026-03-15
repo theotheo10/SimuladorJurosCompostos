@@ -126,32 +126,42 @@
     grid-template-columns: repeat(4, minmax(0,1fr));
     gap: 10px;
     margin-bottom: 1.5rem;
+    align-items: stretch;
   }
   .stat {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 10px;
-    padding: 12px 14px;
+    padding: 14px 14px 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 90px;
   }
   .stat .lbl {
-    font-size: 0.68rem;
+    font-size: 0.65rem;
     font-family: 'Courier New', monospace;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--muted);
-    margin-bottom: 4px;
+    margin-bottom: 6px;
+    line-height: 1.4;
   }
   .stat .val {
     font-size: 1.05rem;
     font-weight: bold;
     color: var(--text);
     line-height: 1.2;
+    flex: 1;
+    display: flex;
+    align-items: center;
   }
   .stat .sub {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     color: var(--muted);
-    margin-top: 2px;
+    margin-top: 5px;
     font-family: 'Courier New', monospace;
+    line-height: 1.3;
   }
   .stat.green .val { color: var(--green); }
   .stat.red .val { color: var(--red); }
@@ -484,9 +494,21 @@ function fmtBR(v) {
 }
 function fmtShort(v) {
   const a = Math.abs(v);
-  if (a >= 1e9) return 'R$\u00a0' + (v/1e9).toFixed(2).replace('.',',') + 'B';
-  if (a >= 1e6) return 'R$\u00a0' + (v/1e6).toFixed(1).replace('.',',') + 'M';
-  if (a >= 1e3) return 'R$\u00a0' + (v/1e3).toFixed(1).replace('.',',') + 'k';
+  if (a >= 1e9) {
+    const n = v / 1e9;
+    const dec = Math.abs(n) >= 100 ? 0 : Math.abs(n) >= 10 ? 1 : 2;
+    return 'R$' + '\u00a0' + n.toFixed(dec).replace('.',',') + 'B';
+  }
+  if (a >= 1e6) {
+    const n = v / 1e6;
+    const dec = Math.abs(n) >= 100 ? 0 : Math.abs(n) >= 10 ? 1 : 2;
+    return 'R$' + '\u00a0' + n.toFixed(dec).replace('.',',') + 'M';
+  }
+  if (a >= 1e3) {
+    const n = v / 1e3;
+    const dec = Math.abs(n) >= 100 ? 0 : Math.abs(n) >= 10 ? 1 : 2;
+    return 'R$' + '\u00a0' + n.toFixed(dec).replace('.',',') + 'k';
+  }
   return fmtBR(v);
 }
 function fmtPct(v) { return (v * 100).toFixed(1) + '%'; }
@@ -634,10 +656,12 @@ function update() {
   // Stats
   document.getElementById('statsRow').innerHTML = [
     { lbl: 'Saldo final', val: fmtShort(final.balance), sub: fmtBR(final.balance), cls: '' },
-    { lbl: 'Saldo real', val: fmtShort(final.realBalance), sub: "em poder de compra de hoje", cls: 'green' },
+    { lbl: 'Saldo real', val: fmtShort(final.realBalance), sub: "em valores de hoje", cls: 'green' },
     { lbl: 'Taxa de juros real', val: realRate.toFixed(1) + '%', sub: 'após ' + I + '% de inflação', cls: realRate > 0 ? 'green' : 'red' },
     (() => {
-      // Compute real year gains: realBalance[y] - realBalance[y-1]
+      if (Y < 1 || !rows[Y] || !rows[Y-1]) {
+        return { lbl: 'Ganho no último ano', val: '—', sub: '—', cls: 'green' };
+      }
       const lastRealGain = rows[Y].realBalance - rows[Y-1].realBalance;
       let cumReal = 0, equivYears = 0;
       for (let ey = 1; ey < Y; ey++) {
@@ -647,8 +671,7 @@ function update() {
       const sub = equivYears <= 1
         ? '= 1º ano'
         : '= primeiros ' + equivYears + ' anos';
-      const realLastGain = rows[Y].realBalance - rows[Y-1].realBalance;
-      return { lbl: 'Ganho no último ano (valores de hoje)', val: fmtShort(realLastGain), sub, cls: 'green' };
+      return { lbl: 'Ganho no último ano', val: fmtShort(lastRealGain) + '<span style="font-size:0.6rem;font-weight:400;color:var(--muted);margin-left:4px;font-family:Courier New,monospace;vertical-align:baseline;align-self:flex-end;padding-bottom:1px">(R$ de hoje)</span>', sub, cls: 'green' };
     })()
   ].map(s => `<div class="stat ${s.cls}"><div class="lbl">${s.lbl}</div><div class="val">${s.val}</div><div class="sub">${s.sub}</div></div>`).join('');
 
@@ -1002,8 +1025,8 @@ function updateDrawdown(startingBalance, accumYears) {
   document.getElementById('ddStatsRow').innerHTML = [
     { lbl: 'Saldo final', val: fmtShort(final.balance), sub: fmtBR(final.balance), cls: survived ? '' : 'red' },
     { lbl: 'Total retirado', val: fmtShort(totalWithdrawn), sub: 'em ' + Y + ' anos', cls: 'green' },
-    { lbl: 'Taxa de retirada implícita', val: impliedRate.toFixed(2) + '%', sub: 'ano 1 da aposentadoria', cls: impliedRate < 4 ? 'green' : impliedRate < 6 ? '' : 'red' },
-    { lbl: survived ? 'Patrimônio dura o prazo' : 'Esgotado no ano', val: survived ? '&#10003; Sim' : 'Ano ' + depletedAt, sub: survived ? 'patrimônio dura mais que o prazo' : 'patrimônio chega a zero', cls: survived ? 'green' : 'red' }
+    { lbl: 'Taxa de retirada', val: impliedRate.toFixed(2) + '%', sub: 'ano 1 da aposentadoria', cls: impliedRate < 4 ? 'green' : impliedRate < 6 ? '' : 'red' },
+    { lbl: survived ? 'Patrimônio dura o prazo' : 'Esgotado no ano', val: survived ? '&#10003; Sim' : 'Ano ' + depletedAt, sub: survived ? 'dura mais que o prazo' : 'patrimônio chega a zero', cls: survived ? 'green' : 'red' }
   ].map(s => `<div class="stat ${s.cls}"><div class="lbl">${s.lbl}</div><div class="val">${s.val}</div><div class="sub">${s.sub}</div></div>`).join('');
 
   // Comparison panel

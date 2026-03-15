@@ -306,10 +306,10 @@
 <body>
 
 <h1>Simulador de Juros Compostos</h1>
-<p class="subtitle">capitalização mensal · corrigido pela inflação · R$</p>
+<p class="subtitle">capitalização mensal · correção pela inflação · R$</p>
 
 <h2 style="font-size:1.3rem; font-weight:normal; letter-spacing:-0.02em; margin-bottom:0.2rem;">Fase de Acumulação</h2>
-<p class="subtitle">construção de patrimônio ao longo do tempo</p>
+<p class="subtitle">construção de patrimônio</p>
 
 <div class="section-label">Parâmetros</div>
 <div class="controls-grid">
@@ -636,7 +636,20 @@ function update() {
     { lbl: 'Saldo final', val: fmtShort(final.balance), sub: fmtBR(final.balance), cls: '' },
     { lbl: 'Saldo real', val: fmtShort(final.realBalance), sub: "em poder de compra de hoje", cls: 'green' },
     { lbl: 'Taxa de juros real', val: realRate.toFixed(1) + '%', sub: 'após ' + I + '% de inflação', cls: realRate > 0 ? 'green' : 'red' },
-    { lbl: 'Ganho no último ano', val: fmtShort(final.yearGain), sub: 'ano ' + (Y-1) + '→' + Y, cls: 'green' }
+    (() => {
+      // Compute real year gains: realBalance[y] - realBalance[y-1]
+      const lastRealGain = rows[Y].realBalance - rows[Y-1].realBalance;
+      let cumReal = 0, equivYears = 0;
+      for (let ey = 1; ey < Y; ey++) {
+        cumReal += rows[ey].realBalance - rows[ey-1].realBalance;
+        if (cumReal >= lastRealGain) { equivYears = ey; break; }
+      }
+      const sub = equivYears <= 1
+        ? '= 1º ano'
+        : '= primeiros ' + equivYears + ' anos';
+      const realLastGain = rows[Y].realBalance - rows[Y-1].realBalance;
+      return { lbl: 'Ganho no último ano (valores de hoje)', val: fmtShort(realLastGain), sub, cls: 'green' };
+    })()
   ].map(s => `<div class="stat ${s.cls}"><div class="lbl">${s.lbl}</div><div class="val">${s.val}</div><div class="sub">${s.sub}</div></div>`).join('');
 
   // Comparison panel

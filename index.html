@@ -318,7 +318,7 @@
       <label>Aporte inicial</label>
       <span class="ctrl-val" id="lP" contenteditable="true" spellcheck="false" title="Clique para editar">R$ 300.000</span>
     </div>
-    <input type="range" id="sP" min="10000" max="1000000" step="10000" value="300000">
+    <input type="range" id="sP" min="10000" max="1000000" step="10000" value="100000">
   </div>
   <div class="ctrl">
     <div class="ctrl-header">
@@ -332,7 +332,7 @@
       <label>Taxa de juros anual</label>
       <span class="ctrl-val" id="lR" contenteditable="true" spellcheck="false" title="Clique para editar">20%</span>
     </div>
-    <input type="range" id="sR" min="1" max="30" step="0.5" value="20">
+    <input type="range" id="sR" min="1" max="30" step="0.5" value="15">
   </div>
   <div class="ctrl">
     <div class="ctrl-header">
@@ -353,7 +353,7 @@
       <label>Taxa de inflação anual</label>
       <span class="ctrl-val" id="lI" contenteditable="true" spellcheck="false" title="Clique para editar" style="color:var(--red)">4%</span>
     </div>
-    <input type="range" id="sI" min="0" max="20" step="0.5" value="4">
+    <input type="range" id="sI" min="0" max="20" step="0.5" value="5">
   </div>
 </div>
 
@@ -718,14 +718,14 @@ update();
       <label>Taxa de juros anual</label>
       <span class="ctrl-val" id="dlR">10%</span>
     </div>
-    <input type="range" id="dsR" min="0" max="30" step="0.5" value="10">
+    <input type="range" id="dsR" min="0" max="30" step="0.5" value="15">
   </div>
   <div class="ctrl inflation-ctrl">
     <div class="ctrl-header">
       <label>Taxa de inflação anual</label>
       <span class="ctrl-val" id="dlI" style="color:var(--red)">4%</span>
     </div>
-    <input type="range" id="dsI" min="0" max="20" step="0.5" value="4">
+    <input type="range" id="dsI" min="0" max="20" step="0.5" value="5">
   </div>
   <div class="ctrl">
     <div class="ctrl-header">
@@ -780,7 +780,7 @@ update();
         <th>Saldo nominal</th>
         <th>Saldo real</th>
         <th>Retirada anual</th>
-        <th>Equiv. mensal (R$ de hoje)</th>
+        <th>Retirada mensal (nominal)</th>
         <th>Taxa de retirada</th>
       </tr>
     </thead>
@@ -1017,7 +1017,7 @@ function updateDrawdown(startingBalance, accumYears) {
       <td${depleted ? ' class="r"' : ''}><strong>${depleted ? '&#8212;' : fmtShort(d.balance)}</strong></td>
       <td class="g">${depleted ? '&#8212;' : fmtShort(d.realBalance)}</td>
       <td class="r">${y === 0 ? '&#8212;' : fmtShort(d.withdrawal)}</td>
-      <td style="color:var(--muted)">${y === 0 ? '&#8212;' : fmtBR(C/12 * (12/12))}</td>
+      <td style="color:var(--muted)">${y === 0 ? '&#8212;' : fmtBR(d.withdrawal / 12)}</td>
       <td style="color:var(--muted)">${wRate}</td>
     </tr>`;
   }).join('');

@@ -408,6 +408,7 @@
     <thead>
       <tr>
         <th>Ano</th>
+        <th>Data</th>
         <th>Saldo nominal</th>
         <th>Saldo real</th>
         <th>Perda de poder de compra</th>
@@ -633,6 +634,11 @@ function update() {
   const G = getVal('sG');
   const Y = Math.round(getVal('sY'));
   const I = getVal('sI');
+  const _now = new Date();
+  const _curYear = _now.getFullYear();
+  const _curMonth = String(_now.getMonth() + 1).padStart(2, '0');
+  const _retireYear = _curYear + Y;
+  const _retireLabel = _curMonth + '/' + _retireYear;
 
   // Only update labels if not currently being edited
   editableCfg.forEach(cfg => {
@@ -677,13 +683,13 @@ function update() {
 
   // Comparison panel
   document.getElementById('nominalVal').textContent = fmtShort(final.balance);
-  document.getElementById('nominalSub').textContent = fmtBR(final.balance) + ' — dinheiro do ano ' + Y;
+  document.getElementById('nominalSub').textContent = fmtBR(final.balance) + ' — dinheiro de ' + _retireLabel;
   document.getElementById('realVal').textContent = fmtShort(final.realBalance);
-  document.getElementById('realSub').textContent = fmtBR(final.realBalance) + ' em R$ de hoje';
+  document.getElementById('realSub').textContent = fmtBR(final.realBalance) + ' em R$ de ' + _curMonth + '/' + _curYear;
 
   const inflationMultiplier = Math.pow(1 + I/100, Y).toFixed(1);
   document.getElementById('inflationNote').textContent =
-    `Com inflação de ${I}% ao ano, os preços serão ${inflationMultiplier}× mais altos em ${Y} anos — ou seja, seu saldo nominal de R$${Math.round(final.balance).toLocaleString('pt-BR')} terá o mesmo poder de compra de R$${Math.round(final.realBalance).toLocaleString('pt-BR')} hoje. Isso representa ${purchasingLostPct}% do saldo nominal corroído pela inflação. Taxa de juros real: ${realRate.toFixed(2)}% ao ano (equação de Fisher).`;
+    `Com inflação de ${I}% ao ano, os preços serão ${inflationMultiplier}× mais altos em ${Y} anos (${_retireLabel}) — ou seja, seu saldo nominal de R$${Math.round(final.balance).toLocaleString('pt-BR')} terá o mesmo poder de compra de R$${Math.round(final.realBalance).toLocaleString('pt-BR')} hoje. Isso representa ${purchasingLostPct}% do saldo nominal corroído pela inflação. Taxa de juros real: ${realRate.toFixed(2)}% ao ano (equação de Fisher).`;
 
   // Sync drawdown starting balance (unless user has overridden it)
   window._lastAccumFinal = final.balance;
@@ -703,6 +709,7 @@ function update() {
     const lostPct = d.balance > 0 ? (lost / d.balance * 100).toFixed(0) : 0;
     return `<tr>
       <td>${y}</td>
+      <td style="color:var(--muted)">${_curMonth + '/' + (_curYear + y)}</td>
       <td><strong>${fmtShort(d.balance)}</strong></td>
       <td class="g">${fmtShort(d.realBalance)}</td>
       <td class="r">−${fmtShort(lost)} <span style="opacity:0.6">(${lostPct}%)</span></td>
@@ -813,6 +820,7 @@ update();
     <thead>
       <tr>
         <th>Ano</th>
+        <th>Data</th>
         <th>Saldo nominal</th>
         <th>Saldo real</th>
         <th>Retirada anual</th>
@@ -950,6 +958,11 @@ function getDdVal(id) {
 }
 
 function updateDrawdown(startingBalance, accumYears) {
+  const _ddNow = new Date();
+  const _ddCurYear = _ddNow.getFullYear();
+  const _ddCurMonth = String(_ddNow.getMonth() + 1).padStart(2, '0');
+  // Retirement start year = today + accumulation years
+  const _retireStartYear = _ddCurYear + Math.round(window._lastAccumYears || 0);
   const S = ddStartOverride !== null ? ddStartOverride : startingBalance;
   const C = ddCostOverride !== null ? ddCostOverride : getDdVal('dsC');
   const R = getDdVal('dsR');
@@ -1004,9 +1017,9 @@ function updateDrawdown(startingBalance, accumYears) {
     verdictEl.style.border = '1px solid var(--green)';
     verdictEl.style.color = 'var(--green)';
     verdictEl.innerHTML =
-      `&#10003; Seu patrimônio dura todo o prazo de ${Y} anos. ` +
+      `&#10003; Seu patrimônio dura todo o prazo de ${Y} anos (até ${_ddCurMonth}/${_retireStartYear + Y}). ` +
       `Um custo de vida de ${fmtBR(C)}/mês hoje se torna ${fmtBR(costAtRetirement/12)}/mês na aposentadoria ` +
-      `(após ${AY} anos com inflação de ${I}%). ` +
+      `(a partir de ${_ddCurMonth}/${_retireStartYear}, após ${AY} anos com inflação de ${I}%). ` +
       `Isso implica uma <strong>taxa de retirada de ${impliedRate.toFixed(2)}%</strong> no 1º ano da aposentadoria. ` +
       `Saldo final: ${fmtShort(final.balance)}.`;
   } else {
@@ -1014,8 +1027,8 @@ function updateDrawdown(startingBalance, accumYears) {
     verdictEl.style.border = '1px solid var(--red)';
     verdictEl.style.color = 'var(--red)';
     verdictEl.innerHTML =
-      `&#9888; Patrimônio esgotado no ano ${depletedAt}. ` +
-      `Um custo de vida de ${fmtBR(C)}/mês hoje chega a ${fmtBR(costAtRetirement/12)}/mês na aposentadoria, ` +
+      `&#9888; Patrimônio esgotado em ${_ddCurMonth}/${_retireStartYear + depletedAt} (ano ${depletedAt} da retirada). ` +
+      `Um custo de vida de ${fmtBR(C)}/mês hoje chega a ${fmtBR(costAtRetirement/12)}/mês na aposentadoria (${_ddCurMonth}/${_retireStartYear}), ` +
       `exigindo uma <strong>taxa de retirada de ${impliedRate.toFixed(2)}%</strong> — ` +
       `alta demais para uma rentabilidade de ${R}%. ` +
       `Tente reduzir o custo de vida, aumentar a rentabilidade ou estender o prazo de acumulação.`;
@@ -1031,15 +1044,15 @@ function updateDrawdown(startingBalance, accumYears) {
 
   // Comparison panel
   document.getElementById('ddNominalVal').textContent = fmtShort(final.balance);
-  document.getElementById('ddNominalSub').textContent = fmtBR(final.balance) + ' — dinheiro do ano ' + Y;
+  document.getElementById('ddNominalSub').textContent = fmtBR(final.balance) + ' — dinheiro de ' + _ddCurMonth + '/' + (_retireStartYear + Y);
   document.getElementById('ddRealVal').textContent = fmtShort(final.realBalance);
-  document.getElementById('ddRealSub').textContent = fmtBR(final.realBalance) + ' em R$ de hoje';
+  document.getElementById('ddRealSub').textContent = fmtBR(final.realBalance) + ' em R$ de ' + _ddCurMonth + '/' + _ddCurYear;
 
   const lastYrWithdrawal = rows[rows.length - 1].withdrawal || rows.filter(r => r.withdrawal > 0).slice(-1)[0]?.withdrawal || 0;
   document.getElementById('ddInflationNote').textContent =
-    `Custo de vida hoje: ${fmtBR(C)}/mês. ` +
-    `Na aposentadoria (${AY} anos, inflação ${I}%): ${fmtBR(costAtRetirement/12)}/mês. ` +
-    `No ano ${Y} das retiradas: ${fmtBR(lastYrWithdrawal/12)}/mês (nominal). ` +
+    `Custo de vida hoje (${_ddCurMonth}/${_ddCurYear}): ${fmtBR(C)}/mês. ` +
+    `Na aposentadoria (${_ddCurMonth}/${_retireStartYear}, após ${AY} anos, inflação ${I}%): ${fmtBR(costAtRetirement/12)}/mês. ` +
+    `Em ${_ddCurMonth}/${_retireStartYear + Y}: ${fmtBR(lastYrWithdrawal/12)}/mês (nominal). ` +
     `Rentabilidade real nas retiradas: ${realRate.toFixed(2)}% a.a.`;
 
   // Milestone table
@@ -1050,6 +1063,7 @@ function updateDrawdown(startingBalance, accumYears) {
     const wRate = d.balance > 0 && y > 0 ? (d.withdrawal / rows[y-1].balance * 100).toFixed(1) + '%' : (y === 0 ? '—' : '—');
     return `<tr${depleted ? ' style="opacity:0.45"' : ''}>
       <td>${y}</td>
+      <td style="color:var(--muted)">${_ddCurMonth + '/' + (_retireStartYear + y)}</td>
       <td${depleted ? ' class="r"' : ''}><strong>${depleted ? '&#8212;' : fmtShort(d.balance)}</strong></td>
       <td class="g">${depleted ? '&#8212;' : fmtShort(d.realBalance)}</td>
       <td class="r">${y === 0 ? '&#8212;' : fmtShort(d.withdrawal)}</td>
